@@ -16,75 +16,74 @@ export default function RankingTable({ data, metadata }: RankingTableProps) {
     };
 
     return (
-        <div className="space-y-6">
-            {metadata && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-blue-50 p-4 rounded-lg">
-                        <p className="text-sm text-blue-600 font-medium">評価対象</p>
-                        <p className="text-2xl font-bold text-blue-900">{formatNumber(metadata.total_evaluated)}</p>
-                        <p className="text-xs text-blue-600 mt-1">アイテム</p>
+        <div className="space-y-4">
+            {/* ランキングリスト */}
+            {data.map((item, index) => (
+                <div key={item.item_id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+                    {/* ヘッダー部分 */}
+                    <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                            <div className="flex flex-col items-center">
+                                <span className="text-xs text-gray-500 mb-1">No.{index + 1}</span>
+                                {index === 0 && <span className="text-2xl">👑</span>}
+                                {index === 1 && <span className="text-2xl">🥈</span>}
+                                {index === 2 && <span className="text-2xl">🥉</span>}
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-800">{item.item_name}</h3>
+                        </div>
+                        <div className="text-right text-xs text-gray-500">
+                            <div>{new Date().toLocaleString('ja-JP')} 更新</div>
+                            <div className="mt-1">
+                                <span className="inline-block">🌐 Universalis</span>
+                            </div>
+                        </div>
                     </div>
-                    <div className="bg-green-50 p-4 rounded-lg">
-                        <p className="text-sm text-green-600 font-medium">条件合致</p>
-                        <p className="text-2xl font-bold text-green-900">{formatNumber(metadata.total_matched)}</p>
-                        <p className="text-xs text-green-600 mt-1">アイテム</p>
-                    </div>
-                    <div className="bg-purple-50 p-4 rounded-lg">
-                        <p className="text-sm text-purple-600 font-medium">表示中</p>
-                        <p className="text-2xl font-bold text-purple-900">{formatNumber(metadata.returned)}</p>
-                        <p className="text-xs text-purple-600 mt-1">アイテム</p>
-                    </div>
-                </div>
-            )}
 
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">順位</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">アイテム名</th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">リテイナー数量</th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">平均価格</th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">推定価値</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {data.map((item, index) => (
-                                <tr key={item.item_id} className={`hover:bg-gray-50 transition-colors ${index < 3 ? 'bg-yellow-50' : ''}`}>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="flex items-center">
-                                            {index < 3 ? (
-                                                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 text-white font-bold text-sm">
-                                                    {index + 1}
-                                                </span>
-                                            ) : (
-                                                <span className="text-sm font-medium text-gray-900">{index + 1}</span>
-                                            )}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="text-sm font-medium text-gray-900">{item.item_name}</div>
-                                        <div className="text-xs text-gray-500">ID: {item.item_id}</div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                                        <span className="text-sm text-gray-900">{formatNumber(item.retainer_qty)}</span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                                        <span className="text-sm text-gray-900">{formatNumber(item.avg_price)} gil</span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                                        <span className="text-sm font-bold text-gray-900">{formatNumber(item.estimated_value)} gil</span>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                    {/* 推定価値と取引数 */}
+                    <div className="flex items-center gap-6 mb-6">
+                        <div className="flex items-center gap-2">
+                            <span className="bg-red-500 text-white text-xs px-2 py-1 rounded font-bold">
+                                推定価値
+                            </span>
+                            <span className="text-2xl font-bold text-gray-800">
+                                {formatNumber(item.estimated_value)}
+                            </span>
+                            <span className="text-sm text-gray-600">ギル</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-600">リテイナー数量</span>
+                            <span className="text-2xl font-bold text-gray-800">{item.retainer_qty}</span>
+                        </div>
+                    </div>
+
+                    {/* 統計情報 */}
+                    <div className="grid grid-cols-3 gap-4">
+                        <div className="bg-gray-50 rounded p-4 text-center">
+                            <div className="text-xs text-gray-600 mb-2">平均単価</div>
+                            <div className="text-lg font-bold text-gray-800">
+                                {formatNumber(item.avg_price)}
+                            </div>
+                            <div className="text-xs text-gray-600 mt-1">ギル</div>
+                        </div>
+
+                        <div className="bg-gray-50 rounded p-4 text-center">
+                            <div className="text-xs text-gray-600 mb-2">リテイナー数量</div>
+                            <div className="text-lg font-bold text-gray-800">{item.retainer_qty}</div>
+                        </div>
+
+                        <div className="bg-gray-50 rounded p-4 text-center">
+                            <div className="text-xs text-gray-600 mb-2">推定価値</div>
+                            <div className="text-lg font-bold text-gray-800">
+                                {formatNumber(item.estimated_value)}
+                            </div>
+                            <div className="text-xs text-gray-600 mt-1">ギル</div>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            ))}
 
             {data.length === 0 && (
-                <div className="text-center py-12 bg-gray-50 rounded-lg">
+                <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
                     <p className="text-gray-500">該当するデータがありません</p>
                 </div>
             )}
