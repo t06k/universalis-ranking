@@ -70,10 +70,10 @@ export default function Home() {
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <header className="mb-8">
           <h1 className="text-4xl font-bold text-gray-800 mb-2">
-            リテイナー効率ランキング
+            マケボランキング
           </h1>
           <p className="text-gray-600">
-            Universalis API を利用した FF14 マーケット分析ツール
+            FF14 マーケット分析アプリ
           </p>
         </header>
 
