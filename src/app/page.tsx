@@ -1,0 +1,175 @@
+// src/app/page.tsx
+'use client';
+
+import { useState, useEffect } from 'react';
+import RankingTable from '@/components/RankingTable';
+import LoadingSpinner from '@/components/LoadingSpinner';
+import ErrorMessage from '@/components/ErrorMessage';
+import type { RankingItem } from '@/types';
+
+interface ApiResponse {
+  success: boolean;
+  data?: RankingItem[];
+  metadata?: {
+    total_evaluated: number;
+    total_matched: number;
+    returned: number;
+    parameters: any;
+  };
+  error?: string;
+}
+
+export default function Home() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<RankingItem[]>([]);
+  const [metadata, setMetadata] = useState<any>(null);
+  const [currentTime, setCurrentTime] = useState<string>('');
+
+  const [days, setDays] = useState(3);
+  const [minSales, setMinSales] = useState(1);
+  const [maxItems, setMaxItems] = useState(10000);
+  const [topN, setTopN] = useState(20);
+
+  const fetchRanking = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams({
+        days: days.toString(),
+        minSales: minSales.toString(),
+        maxItems: maxItems.toString(),
+        top: topN.toString()
+      });
+
+      const response = await fetch(`/api/ranking?${params}`);
+      const result: ApiResponse = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'データ取得に失敗しました');
+      }
+
+      setData(result.data || []);
+      setMetadata(result.metadata);
+      setCurrentTime(new Date().toLocaleString('ja-JP'));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '不明なエラー');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRanking();
+  }, []);
+
+  return (
+    <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <header className="mb-8">
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">
+            リテイナー効率ランキング
+          </h1>
+          <p className="text-gray-600">
+            Universalis API を利用した FF14 マーケット分析ツール
+          </p>
+        </header>
+
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">
+            検索条件
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                集計期間（日）
+              </label>
+              <input
+                type="number"
+                value={days}
+                onChange={(e) => setDays(parseInt(e.target.value))}
+                min="1"
+                max="30"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                最低販売数/日
+              </label>
+              <input
+                type="number"
+                value={minSales}
+                onChange={(e) => setMinSales(parseInt(e.target.value))}
+                min="1"
+                max="100"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                評価対象数
+              </label>
+              <input
+                type="number"
+                value={maxItems}
+                onChange={(e) => setMaxItems(parseInt(e.target.value))}
+                min="100"
+                max="60000"
+                step="1000"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                表示件数
+              </label>
+              <input
+                type="number"
+                value={topN}
+                onChange={(e) => setTopN(parseInt(e.target.value))}
+                min="5"
+                max="100"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+          <button
+            onClick={fetchRanking}
+            disabled={loading}
+            className="mt-4 w-full md:w-auto px-6 py-3 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          >
+            {loading ? '取得中...' : '検索実行'}
+          </button>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6">
+          {loading && <LoadingSpinner />}
+          {error && <ErrorMessage message={error} onRetry={fetchRanking} />}
+          {!loading && !error && data.length > 0 && (
+            <RankingTable data={data} metadata={metadata} />
+          )}
+        </div>
+
+        <footer className="mt-8 text-center text-sm text-gray-600">
+          <p>
+            データ提供:{' '}
+            <a
+              href="https://universalis.app/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline"
+            >
+              Universalis
+            </a>
+          </p>
+          {currentTime && (
+            <p className="mt-1">
+              最終更新: {currentTime}
+            </p>
+          )}
+        </footer>
+      </div>
+    </main>
+  );
+}
