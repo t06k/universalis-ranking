@@ -7,9 +7,9 @@ import {
 } from '@/lib/universalis';
 import { loadRetainerItems, loadItemNames } from '@/lib/dataLoader';
 import type { RankingItem } from '@/types';
+
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
-// Vercel の実行時間制限（秒）
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
@@ -17,8 +17,13 @@ export async function GET(request: NextRequest) {
         const minSalesPerDay = parseInt(searchParams.get('minSales') || '1');
         const maxItems = parseInt(searchParams.get('maxItems') || '60000');
         const topN = parseInt(searchParams.get('top') || '20');
-        console.log('Starting ranking calculation...', { days, minSalesPerDay, maxItems });
-        // 1. データ読み込み
+
+        // ▼ 1. チェックボックスの状態を取得 ▼
+        const retainerCheck = searchParams.get('retainer_check') === 'true';
+
+        console.log('Starting ranking calculation...', { days, minSalesPerDay, maxItems, retainerCheck });
+
+        // 1. データ読み込み (loadRetainerItems は常に実行)
         const [retainerMap, itemNames, marketableIds] = await Promise.all([
             loadRetainerItems(),
             loadItemNames(),
@@ -28,6 +33,7 @@ export async function GET(request: NextRequest) {
 
         // 2. 対象アイテムを制限
         const targetIds = marketableIds.slice(0, maxItems);
+
         // 3. 履歴データ取得
         const histories = await fetchAllHistories(targetIds, 100);
         console.log(`Fetched histories for ${Object.keys(histories).length} items`);
@@ -42,6 +48,7 @@ export async function GET(request: NextRequest) {
 
             // 期間内のデータをフィルタ
             const recentEntries = filterRecentEntries(entries, days);
+
             // 販売数チェック
             const totalQty = recentEntries.reduce((sum, e) => sum + e.quantity, 0);
             if (totalQty < minTotalSales) {
@@ -56,22 +63,28 @@ export async function GET(request: NextRequest) {
             const avgPrice = totalQty > 0 ? totalSales / totalQty : 0;
 
             // リテイナー数量
-            const retainerQty = retainerMap[itemId] ||
-                0;
-            if (retainerQty === 0) {
+            const retainerQty = retainerMap[itemId] || 0;
+
+            // ▼ 2. retainerCheckがONの場合のみ、リテイナー品以外を除外 ▼
+            if (retainerCheck && retainerQty === 0) {
                 continue;
             }
 
             // アイテム名取得
-            const itemName = itemNames[itemIdStr]?.ja ||
-                `ID:${itemId}`;
+            const itemName = itemNames[itemIdStr]?.ja || `ID:${itemId}`;
+
+            // ▼ 3. 推定価値の計算を調整 ▼
+            // retainerCheckがOFFの場合、リテイナー品でなくても (qty=0)、
+            // 数量1として推定価値を計算する
+            const qtyForCalc = (retainerQty > 0) ? retainerQty : 1;
+            const estimatedValue = Math.round(avgPrice * qtyForCalc);
 
             results.push({
                 item_id: itemId,
                 item_name: itemName,
-                retainer_qty: retainerQty,
+                retainer_qty: retainerQty, // 実際の数量を渡す
                 avg_price: Math.round(avgPrice),
-                estimated_value: Math.round(avgPrice * retainerQty)
+                estimated_value: estimatedValue // 計算に使用した推定価値
             });
         }
 
@@ -88,7 +101,7 @@ export async function GET(request: NextRequest) {
                 total_evaluated: targetIds.length,
                 total_matched: results.length,
                 returned: rankedResults.length,
-                parameters: { days, minSalesPerDay, maxItems, topN }
+                parameters: { days, minSalesPerDay, maxItems, topN, retainerCheck } // retainerCheck をメタデータに追加
             }
         });
     } catch (error) {
