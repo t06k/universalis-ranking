@@ -4,7 +4,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
-    title: 'リテイナー効率ランキング | FF14 マーケット分析',
+    title: 'マケボランキング | FF14 マーケット分析',
     description: 'Universalis API を利用したファイナルファンタジー14のマーケット分析ツール',
     keywords: ['FF14', 'FFXIV', 'Universalis', 'マーケット', 'リテイナー'],
 };
