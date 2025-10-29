@@ -19,6 +19,27 @@ interface ApiResponse {
   error?: string;
 }
 
+// ワールドデータ定義
+const WORLDS_BY_DC = {
+  'Elemental': [
+    { id: 23, name: 'Tonberry' },
+    { id: 45, name: 'Carbuncle' },
+    { id: 49, name: 'Kujata' },
+    // ...
+  ],
+  'Gaia': [
+    { id: 49, name: 'Alexander' },
+    { id: 68, name: 'Typhon' },
+    // ...
+  ],
+  'Mana': [
+    { id: 44, name: 'Anima' },
+    { id: 47, name: 'Hades' },
+    { id: 48, name: 'Ixion' },
+    { id: 70, name: 'Chocobo' },
+  ]
+};
+
 export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,6 +52,9 @@ export default function Home() {
   const [maxItems, setMaxItems] = useState(10000);
   const [topN, setTopN] = useState(20);
 
+  // ワールドIDのstate追加
+  const [worldId, setWorldId] = useState(48);
+
   const fetchRanking = async () => {
     setLoading(true);
     setError(null);
@@ -40,8 +64,8 @@ export default function Home() {
         minSales: minSales.toString(),
         maxItems: maxItems.toString(),
         top: topN.toString(),
-        // APIにチェックボックスの状態を渡す
-        retainer_check: retainerCheck.toString()
+        retainer_check: retainerCheck.toString(), // APIにチェックボックスの状態を渡す
+        worldId: worldId.toString() //APIに選択されたworldsの情報を渡す
       });
 
       const response = await fetch(`/api/ranking?${params}`);
@@ -82,6 +106,27 @@ export default function Home() {
             検索条件
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* ワールド選択ドロップダウン */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                ワールド
+              </label>
+              <select
+                value={worldId}
+                onChange={(e) => setWorldId(parseInt(e.target.value))}
+                className="..."
+              >
+                {Object.entries(WORLDS_BY_DC).map(([dc, worlds]) => (
+                  <optgroup key={dc} label={dc}>
+                    {worlds.map((world) => (
+                      <option key={world.id} value={world.id}>
+                        {world.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 集計期間（日）
@@ -136,7 +181,7 @@ export default function Home() {
               />
             </div>
           </div>
-          {/* ▼ チェックボックスを追加 ▼ */}
+          {/* リテイナー取得アイテムに絞るチェックボックス */}
           <div className="mt-4">
             <label className="flex items-center gap-2 text-sm text-gray-700">
               <input
@@ -148,7 +193,6 @@ export default function Home() {
               リテイナー取得アイテムのみを対象にする
             </label>
           </div>
-          {/* ▲ チェックボックスを追加 ▲ */}
 
           <button
             onClick={fetchRanking}

@@ -1,5 +1,6 @@
 // src/app/api/ranking/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+import Select from "react-select";
 import {
     fetchMarketableIds,
     fetchAllHistories,
@@ -17,11 +18,13 @@ export async function GET(request: NextRequest) {
         const minSalesPerDay = parseInt(searchParams.get('minSales') || '1');
         const maxItems = parseInt(searchParams.get('maxItems') || '60000');
         const topN = parseInt(searchParams.get('top') || '20');
+        const worldId = parseInt(searchParams.get('worldId') || '48');
+
 
         // ▼ 1. チェックボックスの状態を取得 ▼
-        const retainerCheck = searchParams.get('retainer_check') === 'true';
+        const retainerCheck = searchParams.get('retainer_check') === 'true'
 
-        console.log('Starting ranking calculation...', { days, minSalesPerDay, maxItems, retainerCheck });
+        console.log('Starting ranking calculation...', { days, minSalesPerDay, maxItems, retainerCheck, worldId });
 
         // 1. データ読み込み (loadRetainerItems は常に実行)
         const [retainerMap, itemNames, marketableIds] = await Promise.all([
@@ -35,7 +38,7 @@ export async function GET(request: NextRequest) {
         const targetIds = marketableIds.slice(0, maxItems);
 
         // 3. 履歴データ取得
-        const histories = await fetchAllHistories(targetIds, 100);
+        const histories = await fetchAllHistories(targetIds, worldId, 100);
         console.log(`Fetched histories for ${Object.keys(histories).length} items`);
 
         // 4. ランキング計算

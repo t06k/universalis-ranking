@@ -1,7 +1,6 @@
 // src/lib/universalis.ts
 import type { UniversalisHistoryResponse } from '@/types';
 
-const WORLD_ID = 45; // デフォルトワールドID（必要に応じて変更）
 const BASE_URL = 'https://universalis.app/api/v2';
 /**
  * Universalis API からマーケット対象アイテムIDを取得
@@ -28,7 +27,7 @@ export async function fetchMarketableIds(): Promise<number[]> {
  */
 export async function fetchHistoryBulk(
     itemIds: number[],
-    worldId: number = WORLD_ID
+    worldId: number
 ): Promise<UniversalisHistoryResponse['items']> {
     const idsStr = itemIds.join(',');
     const url = `${BASE_URL}/history/${worldId}/${idsStr}?entriesToReturn=500`;
@@ -54,6 +53,7 @@ export async function fetchHistoryBulk(
  */
 export async function fetchAllHistories(
     itemIds: number[],
+    worldId: number,
     batchSize: number = 100
 ): Promise<UniversalisHistoryResponse['items']> {
     const batches: number[][] = [];
@@ -68,7 +68,7 @@ export async function fetchAllHistories(
     const maxConcurrent = 8;
     for (let i = 0; i < batches.length; i += maxConcurrent) {
         const chunk = batches.slice(i, i + maxConcurrent);
-        const promises = chunk.map(batch => fetchHistoryBulk(batch));
+        const promises = chunk.map(batch => fetchHistoryBulk(batch, worldId));
 
         const results = await Promise.allSettled(promises);
         results.forEach((result) => {
