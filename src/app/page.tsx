@@ -25,18 +25,41 @@ const WORLDS_BY_DC = {
     { id: 23, name: 'Tonberry' },
     { id: 45, name: 'Carbuncle' },
     { id: 49, name: 'Kujata' },
-    // ...
+    { id: 28, name: 'Aegis' },
+    { id: 29, name: 'Atomos' },
+    { id: 30, name: 'Garuda' },
+    { id: 31, name: 'Gungnir' },
+    { id: 32, name: 'Ramuh' },
+    { id: 33, name: 'Tiamat' }
   ],
   'Gaia': [
     { id: 49, name: 'Alexander' },
     { id: 68, name: 'Typhon' },
-    // ...
+    { id: 34, name: 'Bahamut' },
+    { id: 35, name: 'Durandal' },
+    { id: 36, name: 'Fenrir' },
+    { id: 37, name: 'Ifrit' },
+    { id: 38, name: 'Ridill' },
+    { id: 40, name: 'Ultima' }
   ],
   'Mana': [
     { id: 44, name: 'Anima' },
     { id: 47, name: 'Hades' },
     { id: 48, name: 'Ixion' },
     { id: 70, name: 'Chocobo' },
+    { id: 41, name: 'Asura' },
+    { id: 43, name: 'Pandaemonium' },
+    { id: 46, name: 'Masamune' },
+    { id: 50, name: 'Titan' }
+  ],
+  'Meteor': [
+    { id: 51, name: 'Shinryu' },
+    { id: 52, name: 'Unicorn' },
+    { id: 53, name: 'Yojimbo' },
+    { id: 54, name: 'Zeromus' },
+    { id: 55, name: 'Valefor' },
+    { id: 56, name: 'Mandragora' },
+    { id: 42, name: 'Belias' }
   ]
 };
 
