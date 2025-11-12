@@ -72,7 +72,6 @@ export default function Home() {
   const [retainerCheck, setRetainerCheck] = useState(true); // デフォルトをONにする場合
   const [days, setDays] = useState(3);
   const [minSales, setMinSales] = useState(1);
-  const [maxItems, setMaxItems] = useState(10000);
   const [topN, setTopN] = useState(20);
 
   // ワールドIDのstate追加
@@ -85,7 +84,6 @@ export default function Home() {
       const params = new URLSearchParams({
         days: days.toString(),
         minSales: minSales.toString(),
-        maxItems: maxItems.toString(),
         top: topN.toString(),
         retainer_check: retainerCheck.toString(), // APIにチェックボックスの状態を渡す
         worldId: worldId.toString() //APIに選択されたworldsの情報を渡す
@@ -173,20 +171,6 @@ export default function Home() {
                 onChange={(e) => setMinSales(parseInt(e.target.value))}
                 min="1"
                 max="100"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                評価対象数
-              </label>
-              <input
-                type="number"
-                value={maxItems}
-                onChange={(e) => setMaxItems(parseInt(e.target.value))}
-                min="100"
-                max="60000"
-                step="1000"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>

@@ -11,12 +11,12 @@ import type { RankingItem } from '@/types';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
+export const maxItems = 300000;
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
         const days = parseInt(searchParams.get('days') || '3');
         const minSalesPerDay = parseInt(searchParams.get('minSales') || '1');
-        const maxItems = parseInt(searchParams.get('maxItems') || '60000');
         const topN = parseInt(searchParams.get('top') || '20');
         const worldId = parseInt(searchParams.get('worldId') || '48');
 
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
         // ▼ 1. チェックボックスの状態を取得 ▼
         const retainerCheck = searchParams.get('retainer_check') === 'true'
 
-        console.log('Starting ranking calculation...', { days, minSalesPerDay, maxItems, retainerCheck, worldId });
+        console.log('Starting ranking calculation...', { days, minSalesPerDay, retainerCheck, worldId });
 
         // 1. データ読み込み (loadRetainerItems は常に実行)
         const [retainerMap, itemNames, marketableIds] = await Promise.all([

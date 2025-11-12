@@ -63,7 +63,7 @@ export default function RankingTable({ data, metadata }: RankingTableProps) {
                         </div>
 
                         <div className="bg-gray-50 rounded p-4 text-center">
-                            <div className="text-xs text-gray-600 mb-2">リテイナー数量</div>
+                            <div className="text-xs text-gray-600 mb-2">リテイナー最大数量</div>
                             <div className="text-lg font-bold text-gray-800">{item.retainer_qty}</div>
                         </div>
 
