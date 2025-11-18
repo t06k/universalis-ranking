@@ -220,7 +220,7 @@ export default function Home() {
 
         <footer className="mt-8 text-center text-sm text-gray-600">
           <p>
-            データ元:{' '}
+            データ:{' '}
             <a
               href="https://universalis.app/"
               target="_blank"
