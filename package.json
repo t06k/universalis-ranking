@@ -12,6 +12,7 @@
     "@libsql/client": "^0.15.15",
     "@neondatabase/serverless": "^1.0.2",
     "@vercel/postgres": "^0.10.0",
+    "@vercel/speed-insights": "^1.2.0",
     "date-fns": "^4.1.0",
     "module-alias": "^2.2.3",
     "next": "16.0.0",
