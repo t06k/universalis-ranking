@@ -1,6 +1,5 @@
 // src/app/page.tsx
 'use client';
-import { SpeedInsights } from "@vercel/speed-insights/next"
 import { useState, useEffect } from 'react';
 import RankingTable from '@/components/RankingTable';
 import LoadingSpinner from '@/components/LoadingSpinner';
