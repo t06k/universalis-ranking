@@ -15,9 +15,9 @@ export const maxItems = 300000;
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
-        const days = parseInt(searchParams.get('days') || '3');
-        const minSalesPerDay = parseInt(searchParams.get('minSales') || '1');
-        const topN = parseInt(searchParams.get('top') || '20');
+        const days = parseInt(searchParams.get('days') || '5');
+        const minSalesPerDay = parseInt(searchParams.get('minSales') || '10');
+        const topN = parseInt(searchParams.get('top') || '30');
         const worldId = parseInt(searchParams.get('worldId') || '48');
 
 

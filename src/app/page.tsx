@@ -70,9 +70,9 @@ export default function Home() {
   const [metadata, setMetadata] = useState<any>(null);
   const [currentTime, setCurrentTime] = useState<string>('');
   const [retainerCheck, setRetainerCheck] = useState(true); // デフォルトをONにする場合
-  const [days, setDays] = useState(3);
-  const [minSales, setMinSales] = useState(1);
-  const [topN, setTopN] = useState(20);
+  const [days, setDays] = useState(5);
+  const [minSales, setMinSales] = useState(10);
+  const [topN, setTopN] = useState(30);
 
   // ワールドIDのstate追加
   const [worldId, setWorldId] = useState(48);
