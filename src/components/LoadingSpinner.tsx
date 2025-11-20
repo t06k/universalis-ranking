@@ -10,7 +10,7 @@ export default function LoadingSpinner() {
                 データを取得中...
             </p>
             <p className="mt-2 text-sm text-gray-500">
-                最大60秒ほどかかる場合があります
+                最大20秒ほどかかる場合があります
             </p>
         </div>
     );

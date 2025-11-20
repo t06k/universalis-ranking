@@ -229,11 +229,6 @@ export default function Home() {
               Universalis
             </a>
           </p>
-          {currentTime && (
-            <p className="mt-1">
-              最終更新: {currentTime}
-            </p>
-          )}
         </footer>
       </div>
     </main>
