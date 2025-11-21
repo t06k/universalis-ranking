@@ -1,6 +1,5 @@
 // src/components/RankingTable.tsx
 import type { RankingItem } from '@/types';
-import { SpeedInsights } from "@vercel/speed-insights/next"
 interface RankingTableProps {
     data: RankingItem[];
     metadata?: {
