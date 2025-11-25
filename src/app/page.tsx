@@ -91,7 +91,8 @@ export default function Home() {
         minSales: minSales.toString(),
         top: topN.toString(),
         retainer_check: retainerCheck.toString(), // APIにチェックボックスの状態を渡す
-        worldId: worldId.toString() //APIに選択されたworldsの情報を渡す
+        worldId: worldId.toString(), //APIに選択されたworldsの情報を渡す
+        sortBy: sortBy
       });
 
       const response = await fetch(`/api/ranking?${params}`);
