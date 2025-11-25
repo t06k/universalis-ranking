@@ -67,11 +67,11 @@ export default function RankingTable({ data, metadata }: RankingTableProps) {
                         </div>
 
                         <div className="bg-gray-50 rounded p-4 text-center">
-                            <div className="text-xs text-gray-600 mb-2">推定価値</div>
+                            <div className="text-xs text-gray-600 mb-2">販売数</div>
                             <div className="text-lg font-bold text-gray-800">
-                                {formatNumber(item.estimated_value)}
+                                {formatNumber(item.total_sales_qty)}
                             </div>
-                            <div className="text-xs text-gray-600 mt-1">ギル</div>
+                            <div className="text-xs text-gray-600 mt-1">個</div>
                         </div>
                     </div>
                 </div>
