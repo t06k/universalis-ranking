@@ -19,12 +19,14 @@ export async function GET(request: NextRequest) {
         const minSalesPerDay = parseInt(searchParams.get('minSales') || '10');
         const topN = parseInt(searchParams.get('top') || '30');
         const worldId = parseInt(searchParams.get('worldId') || '48');
+        const sortBy = searchParams.get('sortBy') || 'value';
+
 
 
         // ▼ 1. チェックボックスの状態を取得 ▼
         const retainerCheck = searchParams.get('retainer_check') === 'true'
 
-        console.log('Starting ranking calculation...', { days, minSalesPerDay, retainerCheck, worldId });
+        console.log('Starting ranking calculation...', { days, minSalesPerDay, retainerCheck, worldId, sortBy });
 
         // 1. データ読み込み (loadRetainerItems は常に実行)
         const [retainerMap, itemNames, marketableIds] = await Promise.all([
@@ -43,6 +45,7 @@ export async function GET(request: NextRequest) {
 
         // 4. ランキング計算
         const results: RankingItem[] = [];
+        // const results: any[] = []; 
         const minTotalSales = minSalesPerDay * days;
 
         for (const [itemIdStr, data] of Object.entries(histories)) {
@@ -52,17 +55,20 @@ export async function GET(request: NextRequest) {
             // 期間内のデータをフィルタ
             const recentEntries = filterRecentEntries(entries, days);
 
-            // 販売数チェック
+            // 販売数
             const totalQty = recentEntries.reduce((sum, e) => sum + e.quantity, 0);
+            // 販売数チェック
             if (totalQty < minTotalSales) {
                 continue;
             }
 
-            // 平均価格計算
+            // 総販売額
             const totalSales = recentEntries.reduce(
                 (sum, e) => sum + e.quantity * e.pricePerUnit,
                 0
             );
+
+            // 平均価格(単価)
             const avgPrice = totalQty > 0 ? totalSales / totalQty : 0;
 
             // リテイナー数量
@@ -87,14 +93,21 @@ export async function GET(request: NextRequest) {
                 item_name: itemName,
                 retainer_qty: retainerQty, // 実際の数量を渡す
                 avg_price: Math.round(avgPrice),
-                estimated_value: estimatedValue // 計算に使用した推定価値
+                estimated_value: estimatedValue, // 計算に使用した推定価値
+                total_sales_qty: totalQty // ソート用に販売数を保持
             });
         }
 
-        // 5. ソートして上位N件
-        const rankedResults = results
-            .sort((a, b) => b.estimated_value - a.estimated_value)
-            .slice(0, topN);
+        // ▼ 5. 指定されたキーでソート ▼
+        const rankedResults = results.sort((a, b) => {
+            if (sortBy === 'price') {
+                return b.avg_price - a.avg_price; // 平均単価順
+            } else if (sortBy === 'sales') {
+                return b.total_sales_qty - a.total_sales_qty; // 販売数順
+            } else {
+                return b.estimated_value - a.estimated_value; // デフォルト: 取引額順
+            }
+        }).slice(0, topN);
 
         console.log(`Returning top ${rankedResults.length} items`);
         return NextResponse.json({
@@ -104,7 +117,7 @@ export async function GET(request: NextRequest) {
                 total_evaluated: targetIds.length,
                 total_matched: results.length,
                 returned: rankedResults.length,
-                parameters: { days, minSalesPerDay, maxItems, topN, retainerCheck } // retainerCheck をメタデータに追加
+                parameters: { days, minSalesPerDay, maxItems, topN, retainerCheck, sortBy }
             }
         });
     } catch (error) {

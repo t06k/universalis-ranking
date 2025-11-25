@@ -62,6 +62,13 @@ const WORLDS_BY_DC = {
   ]
 };
 
+// ワールドデータ定義
+const SORT_OPTIONS = [
+  { id: "value", name: '取引額' },
+  { id: "price", name: '平均単価' },
+  { id: "sales", name: '販売数' }
+];
+
 export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,9 +79,8 @@ export default function Home() {
   const [days, setDays] = useState(5);
   const [minSales, setMinSales] = useState(10);
   const [topN, setTopN] = useState(30);
-
-  // ワールドIDのstate追加
-  const [worldId, setWorldId] = useState(48);
+  const [worldId, setWorldId] = useState(48);   // ワールドIDのstate追加
+  const [sortBy, setSortBy] = useState("value");
 
   const fetchRanking = async () => {
     setLoading(true);
@@ -185,6 +191,22 @@ export default function Home() {
                 max="100"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                並び替え
+              </label>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {SORT_OPTIONS.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
           {/* リテイナー取得アイテムに絞るチェックボックス */}

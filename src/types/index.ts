@@ -6,7 +6,7 @@ export interface RankingItem {
     retainer_qty: number;
     avg_price: number;
     estimated_value: number;
-    total_sales_qty?: number; // (DB保存用に変更)
+    total_sales_qty: number;
 }
 
 export interface HistoryEntry {
