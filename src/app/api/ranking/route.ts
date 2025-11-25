@@ -1,6 +1,5 @@
 // src/app/api/ranking/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import Select from "react-select";
 import {
     fetchMarketableIds,
     fetchAllHistories,
