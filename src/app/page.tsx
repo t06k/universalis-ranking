@@ -1,4 +1,3 @@
-// src/app/page.tsx
 'use client';
 import { useState, useEffect } from 'react';
 import RankingTable from '@/components/RankingTable';
@@ -141,7 +140,7 @@ export default function Home() {
               <select
                 value={worldId}
                 onChange={(e) => setWorldId(parseInt(e.target.value))}
-                className="..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
               >
                 {Object.entries(WORLDS_BY_DC).map(([dc, worlds]) => (
                   <optgroup key={dc} label={dc}>
@@ -164,7 +163,7 @@ export default function Home() {
                 onChange={(e) => setDays(parseInt(e.target.value))}
                 min="1"
                 max="30"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
               />
             </div>
             <div>
@@ -177,7 +176,7 @@ export default function Home() {
                 onChange={(e) => setMinSales(parseInt(e.target.value))}
                 min="1"
                 max="100"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
               />
             </div>
             <div>
@@ -190,7 +189,7 @@ export default function Home() {
                 onChange={(e) => setTopN(parseInt(e.target.value))}
                 min="5"
                 max="100"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
               />
             </div>
             <div>
@@ -200,7 +199,7 @@ export default function Home() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
               >
                 {SORT_OPTIONS.map((item) => (
                   <option key={item.id} value={item.id}>
