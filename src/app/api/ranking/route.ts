@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
         const days = parseInt(searchParams.get('days') || '5');
-        const minSalesPerDay = parseInt(searchParams.get('minSales') || '10');
+        const minSalesPerDay = parseInt(searchParams.get('minSales') || '100');
         const topN = parseInt(searchParams.get('top') || '30');
         const worldId = parseInt(searchParams.get('worldId') || '48');
         const sortBy = searchParams.get('sortBy') || 'value';

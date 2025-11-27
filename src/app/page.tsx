@@ -76,7 +76,7 @@ export default function Home() {
   const [currentTime, setCurrentTime] = useState<string>('');
   const [retainerCheck, setRetainerCheck] = useState(true); // デフォルトをONにする場合
   const [days, setDays] = useState(5);
-  const [minSales, setMinSales] = useState(10);
+  const [minSales, setMinSales] = useState(100);
   const [topN, setTopN] = useState(30);
   const [worldId, setWorldId] = useState(48);   // ワールドIDのstate追加
   const [sortBy, setSortBy] = useState("value");
