@@ -1,79 +1,99 @@
-# 無料Cronジョブ実装ガイド - 完全版 (GitHub Actions計算方式)
+# 無料Cronジョブ実装ガイド - 日次集計積み上げ方式
 
-このドキュメントでは、Vercel Freeプランの**10秒タイムアウト制限**を回避し、GitHub Actionsの計算リソースを使用してランキングデータを定期更新する方法を説明します。
+このドキュメントでは、Vercelの制限を回避しつつ、データの柔軟な集計を可能にする**「日次集計積み上げ方式」**の実装手順を説明します。
 
 ## 📋 目次
 
-1. [概要](#概要)
-2. [アーキテクチャ](#アーキテクチャ)
-3. [必要なファイル](#必要なファイル)
-4. [セットアップ手順](#セットアップ手順)
-5. [動作確認](#動作確認)
-6. [トラブルシューティング](#トラブルシューティング)
+1. [概要とアーキテクチャ](#概要とアーキテクチャ)
+2. [データベース設定 (Turso)](#データベース設定-turso)
+3. [実装手順](#実装手順)
+   - [集計スクリプト (GitHub Actions)](#1-集計スクリプト-scriptsupdate-rankingts)
+   - [データ保存API (Next.js)](#2-データ保存api-srcappapisync-rankingroutets)
+   - [データ取得・表示API (Next.js)](#3-データ取得表示api-srcappapirankingcachedroutets)
+   - [ワークフロー定義 (GitHub Actions)](#4-ワークフロー定義-githubworkflowsupdate-rankingyml)
+4. [実行頻度の変更方法](#実行頻度の変更方法)
 
 ---
 
-## 概要
+## 概要とアーキテクチャ
 
-### 課題
-- **Vercel Freeプランの制限**: Serverless Functionsは**10秒**でタイムアウトします。外部APIを大量に叩くランキング計算は10秒で終わらない可能性が高いです。
-- **Cron Jobsの制限**: Vercel Cronは月2回しか実行できません。
+### 方式の特徴：日次集計積み上げ
+巨大な生データをそのまま保存するのではなく、**「1日ごとの統計データ」**に圧縮して保存します。
 
-### 解決策
-- **GitHub Actionsで計算**: 時間制限の緩い（最大6時間）GitHub Actions上で計算スクリプトを実行します。
-- **Vercelへデータ送信**: 計算済みの結果データだけをVercel APIに送信し、保存します。
+- **GitHub Actions**: 毎日実行し、直近のデータを取得。「日付×アイテム」ごとの売上・価格を集計して送信します。
+- **Turso (DB)**: 日次データを蓄積します（例: 1年分でも365行/アイテム なので軽量）。
+- **Webアプリ**: DBからデータを取得する際、指定された期間（3日、7日など）のデータをSQLで合算して表示します。
 
 ### メリット
-- ✅ **タイムアウト回避**: 重い計算処理も完了まで実行可能
-- ✅ **完全無料**: GitHub Actionsの無料枠（月2,000分）を使用
-- ✅ **サーバー負荷軽減**: Vercel側の負荷はデータの受け取りと保存のみ
+- ✅ **高速**: 外部APIを叩くより圧倒的に速い。
+- ✅ **柔軟**: 「直近3日」「直近1ヶ月」など、期間を自由に変更可能。
+- ✅ **堅牢**: 過去数日分をまとめて更新する方式にすることで、1回実行が失敗しても次回でリカバリ可能。
 
 ---
 
-## アーキテクチャ
+## データベース設定 (Turso)
 
+### 1. セットアップ
+Tursoのアカウント作成とCLIセットアップがまだの場合は実施してください。
+
+```bash
+# ログインとDB作成
+turso auth login
+turso db create universalis-ranking
+
+# 接続情報の取得（環境変数設定に使用）
+turso db show universalis-ranking --url
+turso db tokens create universalis-ranking
 ```
-┌─────────────────────────────┐
-│      GitHub Actions         │
-│ (Runner: ubuntu-latest)     │
-├─────────────────────────────┤
-│ 1. スクリプト実行           │
-│ 2. Universalis APIから取得  │
-│ 3. ランキング計算           │
-│ 4. 結果をJSON化             │
-└──────────────┬──────────────┘
-               │ HTTP POST (計算済みデータ)
-               │ Authorization: Bearer <SECRET>
-               ↓
-┌─────────────────────────────┐
-│      Vercel (Next.js)       │
-│   /api/sync-ranking         │
-├─────────────────────────────┤
-│ 1. 認証チェック             │
-│ 2. データを受け取る         │
-│ 3. DBに保存 (高速)          │
-└─────────────────────────────┘
+
+### 2. テーブル作成
+以下のSQLを実行して、日次集計用のテーブルを作成します。
+`item_id` と `date` の組み合わせを主キー（PRIMARY KEY）にすることで、重複を防ぎます。
+
+```sql
+CREATE TABLE IF NOT EXISTS daily_rankings (
+  item_id INTEGER NOT NULL,
+  date TEXT NOT NULL,       -- YYYY-MM-DD 形式
+  item_name TEXT,
+  retainer_qty INTEGER DEFAULT 0,
+  sales_qty INTEGER DEFAULT 0,
+  total_sales_gil INTEGER DEFAULT 0,
+  avg_price INTEGER DEFAULT 0,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (item_id, date)
+);
+
+-- 集計・検索用のインデックス
+CREATE INDEX IF NOT EXISTS idx_daily_rankings_date ON daily_rankings(date);
+CREATE INDEX IF NOT EXISTS idx_daily_rankings_item_id ON daily_rankings(item_id);
 ```
 
 ---
 
-## 必要なファイル
+## 実装手順
 
-### 1. `scripts/update-ranking.ts`
+### 1. 集計スクリプト (`scripts/update-ranking.ts`)
 
-**役割**: GitHub Actions上で実行される計算スクリプトです。
+GitHub Actions上で実行され、Universalisからデータを取得し、日別に集計してAPIに送信します。
+※リカバリを考慮し、実行時は「過去3日分」のデータを計算して送信する設定にします。
 
 ```typescript
 // scripts/update-ranking.ts
-import {
-    fetchMarketableIds,
-    fetchAllHistories,
-    filterRecentEntries
-} from '../src/lib/universalis'; // 相対パスでインポート
+import { fetchMarketableIds, fetchAllHistories } from '../src/lib/universalis';
 import { loadRetainerItems, loadItemNames } from '../src/lib/dataLoader';
-import type { RankingItem } from '../src/types';
+import { format, subDays, isSameDay, parseISO } from 'date-fns';
 
-// 環境変数
+// 型定義
+interface DailyRankingData {
+    item_id: number;
+    date: string; // YYYY-MM-DD
+    item_name: string;
+    retainer_qty: number;
+    sales_qty: number;
+    total_sales_gil: number;
+    avg_price: number;
+}
+
 const VERCEL_APP_URL = process.env.VERCEL_APP_URL;
 const CRON_SECRET = process.env.CRON_SECRET;
 
@@ -83,15 +103,14 @@ if (!VERCEL_APP_URL || !CRON_SECRET) {
 }
 
 async function main() {
-    console.log('Starting ranking calculation...');
+    console.log('Starting daily ranking calculation...');
 
     try {
-        // 1. データ取得・計算（重い処理）
-        const days = 5;
-        const minSalesPerDay = 10;
         const worldId = 48;
-        const maxItems = 100000; // 処理アイテム数
+        const maxItems = 2000; // テスト用: 本番では増やしてください
+        const targetDays = 3;  // 過去3日分を計算（リカバリ用）
 
+        // 1. マスタデータ読み込み
         const [retainerMap, itemNames, marketableIds] = await Promise.all([
             loadRetainerItems(),
             loadItemNames(),
@@ -99,59 +118,76 @@ async function main() {
         ]);
 
         const targetIds = marketableIds.slice(0, maxItems);
-        // バッチ処理などでAPI制限を考慮しつつ取得
-        const histories = await fetchAllHistories(targetIds, worldId, 100);
+        
+        // 2. 履歴データ取得 (過去1週間分程度あれば十分)
+        const histories = await fetchAllHistories(targetIds, worldId, 50);
 
-        const results: RankingItem[] = [];
-        const minTotalSales = minSalesPerDay * days;
+        const payload: DailyRankingData[] = [];
+        const today = new Date();
 
-        for (const [itemIdStr, data] of Object.entries(histories)) {
-            const itemId = parseInt(itemIdStr);
-            const entries = data.entries || [];
-            const recentEntries = filterRecentEntries(entries, days);
-            const totalQty = recentEntries.reduce((sum, e) => sum + e.quantity, 0);
+        // 3. 日別集計処理
+        for (let i = 0; i < targetDays; i++) {
+            const targetDate = subDays(today, i);
+            const dateStr = format(targetDate, 'yyyy-MM-dd');
+            
+            console.log(`Processing date: ${dateStr}`);
 
-            if (totalQty < minTotalSales) continue;
+            for (const [itemIdStr, data] of Object.entries(histories)) {
+                const itemId = parseInt(itemIdStr);
+                const entries = data.entries || [];
+                
+                // 対象日の取引のみ抽出
+                // ※Universalisのtimestampは秒単位(UNIX time)の場合とミリ秒の場合があるので注意
+                // ここではミリ秒(13桁)と仮定、もし秒なら * 1000 が必要
+                const dailyEntries = entries.filter(e => {
+                    const entryDate = new Date(e.timestamp * 1000); 
+                    return isSameDay(entryDate, targetDate);
+                });
 
-            const totalSales = recentEntries.reduce(
-                (sum, e) => sum + e.quantity * e.pricePerUnit,
-                0
-            );
-            const avgPrice = totalQty > 0 ? totalSales / totalQty : 0;
-            const retainerQty = retainerMap[itemId] || 0;
-            const itemName = itemNames[itemIdStr]?.ja || `ID:${itemId}`;
-            const qtyForCalc = (retainerQty > 0) ? retainerQty : 1;
-            const estimatedValue = Math.round(avgPrice * qtyForCalc);
+                if (dailyEntries.length === 0) continue;
 
-            results.push({
-                item_id: itemId,
-                item_name: itemName,
-                retainer_qty: retainerQty,
-                avg_price: Math.round(avgPrice),
-                estimated_value: estimatedValue,
-                total_sales_qty: totalQty
+                const salesQty = dailyEntries.reduce((sum, e) => sum + e.quantity, 0);
+                const totalSalesGil = dailyEntries.reduce((sum, e) => sum + (e.quantity * e.pricePerUnit), 0);
+                const avgPrice = salesQty > 0 ? Math.round(totalSalesGil / salesQty) : 0;
+                
+                const itemName = itemNames[itemIdStr]?.ja || `ID:${itemId}`;
+                const retainerQty = retainerMap[itemId] || 0;
+
+                payload.push({
+                    item_id: itemId,
+                    date: dateStr,
+                    item_name: itemName,
+                    retainer_qty: retainerQty,
+                    sales_qty: salesQty,
+                    total_sales_gil: totalSalesGil,
+                    avg_price: avgPrice
+                });
+            }
+        }
+
+        console.log(`Generated ${payload.length} daily records.`);
+
+        // 4. データ送信 (分割送信を推奨)
+        const chunkSize = 500;
+        for (let i = 0; i < payload.length; i += chunkSize) {
+            const chunk = payload.slice(i, i + chunkSize);
+            console.log(`Sending chunk ${i / chunkSize + 1}... (${chunk.length} items)`);
+
+            const response = await fetch(`${VERCEL_APP_URL}/api/sync-ranking`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${CRON_SECRET}`
+                },
+                body: JSON.stringify({ data: chunk })
             });
+
+            if (!response.ok) {
+                throw new Error(`Failed to sync: ${response.status} ${await response.text()}`);
+            }
         }
 
-        console.log(`Calculation completed. ${results.length} items found.`);
-
-        // 2. 計算結果をVercelに送信
-        console.log('Sending data to Vercel...');
-        const response = await fetch(`${VERCEL_APP_URL}/api/sync-ranking`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${CRON_SECRET}`
-            },
-            body: JSON.stringify({ data: results })
-        });
-
-        if (!response.ok) {
-            throw new Error(`Failed to sync: ${response.status} ${await response.text()}`);
-        }
-
-        const json = await response.json();
-        console.log('Sync success:', json);
+        console.log('All data synced successfully.');
 
     } catch (error) {
         console.error('Script failed:', error);
@@ -162,385 +198,176 @@ async function main() {
 main();
 ```
 
-### 2. `src/app/api/sync-ranking/route.ts`
+### 2. データ保存API (`src/app/api/sync-ranking/route.ts`)
 
-**役割**: 計算済みのデータを受け取り、保存するAPIエンドポイントです。
-
-```typescript
-// src/app/api/sync-ranking/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import type { RankingItem } from '@/types';
-
-// Vercel Postgresなどを使う場合はインポート
-// import { sql } from '@vercel/postgres';
-
-export const dynamic = 'force-dynamic';
-
-const CRON_SECRET = process.env.CRON_SECRET;
-
-export async function POST(request: NextRequest) {
-    try {
-        // 1. 認証
-        const authHeader = request.headers.get('authorization');
-        const token = authHeader?.replace('Bearer ', '');
-        
-        if (token !== CRON_SECRET) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        // 2. データ受信
-        const body = await request.json();
-        const data: RankingItem[] = body.data;
-
-        if (!Array.isArray(data)) {
-            return NextResponse.json({ error: 'Invalid data format' }, { status: 400 });
-        }
-
-        console.log(`Received ${data.length} items to save.`);
-
-        // 3. データベースに保存 (TODO: 実装に合わせて変更)
-        // 例: Vercel Postgresの場合
-        /*
-        await sql`BEGIN`;
-        // 既存データをクリアするか、Upsertするかは要件次第
-        // await sql`DELETE FROM rankings WHERE world_id = ...`; 
-        
-        for (const item of data) {
-            await sql`
-                INSERT INTO rankings (item_id, item_name, ...)
-                VALUES (${item.item_id}, ${item.item_name}, ...)
-            `;
-        }
-        await sql`COMMIT`;
-        */
-
-        // ※DBがない場合は、一時的にログ出力のみで成功を返す
-        
-        return NextResponse.json({ 
-            success: true, 
-            message: 'Data synced successfully',
-            count: data.length 
-        });
-
-    } catch (error) {
-        console.error('Sync Error:', error);
-        return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Unknown error' },
-            { status: 500 }
-        );
-    }
-}
-```
-
-### 3. `.github/workflows/update-ranking.yml`
-
-**役割**: スケジュールに従ってスクリプトを実行するワークフロー定義です。
-
-```yaml
-name: Update Ranking Data
-
-on:
-  schedule:
-    # 毎日 3:00, 15:00 JST (UTC 18:00, 6:00)
-    - cron: '0 18 * * *'
-    - cron: '0 6 * * *'
-  workflow_dispatch:
-
-jobs:
-  update-ranking:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run ranking update script
-        # tsxを使ってTypeScriptファイルを直接実行
-        run: npx tsx scripts/update-ranking.ts
-        env:
-          # GitHub Secretsから環境変数を注入
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          VERCEL_APP_URL: ${{ secrets.VERCEL_APP_URL }}
-```
-
----
-
-## セットアップ手順
-
-### ステップ1: 必要なパッケージの確認
-
-スクリプト実行に `tsx` (TypeScript Execute) を使用します。
-`package.json` に特別な追加は不要ですが、ローカルでテストする場合はインストールしておくと便利です。
-
-```bash
-npm install -D tsx
-```
-
-### ステップ2: ファイルの作成
-
-1. `mkdir scripts`
-2. `scripts/update-ranking.ts` を作成（上記コード）
-3. `mkdir -p src/app/api/sync-ranking`
-4. `src/app/api/sync-ranking/route.ts` を作成（上記コード）
-5. `.github/workflows/update-ranking.yml` を作成（上記コード）
-
-### ステップ3: 環境変数の設定
-
-#### Vercel側 (データ受信側)
-- `CRON_SECRET`: 認証用の秘密鍵（ランダムな文字列）
-
-#### GitHub側 (データ送信側)
-- `CRON_SECRET`: Vercelと同じ値
-- `VERCEL_APP_URL`: アプリのURL (例: `https://universalis-ranking.vercel.app`)
-  - **注意**: 末尾に `/` をつけないこと
-
-### ステップ4: デプロイとテスト
-
-1. コードをGitHubにプッシュ
-2. Vercelのデプロイ完了を待つ
-3. GitHub Actionsのタブから `Update Ranking Data` を手動実行 (`Run workflow`)
-4. 成功すれば、VercelのFunctionログに「Received X items to save.」と表示されます。
-
----
-
-## データベース設定 (Turso)
-
-Vercelのタイムアウト制限を回避するため、計算結果を外部データベース（Turso）に保存し、フロントエンドからはその保存済みデータを参照する構成にします。
-
-### ステップ1: Tursoのセットアップ
-
-1. **Tursoアカウント作成**: [Turso公式サイト](https://turso.tech/)からサインアップします。
-2. **CLIのインストール**:
-   ```bash
-   # Windows (PowerShell)
-   iwr https://web.install.turso.tech/turso.ps1 -useb | iex
-   
-   # Mac/Linux
-   curl -sSfL https://get.tur.so/install.sh | bash
-   ```
-3. **ログインとデータベース作成**:
-   ```bash
-   turso auth login
-   turso db create universalis-ranking
-   ```
-4. **接続情報の取得**:
-   ```bash
-   # データベースURL (例: libsql://universalis-ranking-user.turso.io)
-   turso db show universalis-ranking --url
-   
-   # 認証トークン
-   turso db tokens create universalis-ranking
-   ```
-
-### ステップ2: 環境変数の設定
-
-Vercelのプロジェクト設定（Settings > Environment Variables）に以下を追加します。
-
-- `TURSO_DATABASE_URL`: 上記で取得したURL
-- `TURSO_AUTH_TOKEN`: 上記で取得したトークン
-
-### ステップ3: 必要なパッケージのインストール
-
-```bash
-npm install @libsql/client
-```
-
-### ステップ4: DB接続クライアントの作成
-
-`src/lib/turso.ts` を作成します。
-
-```typescript
-// src/lib/turso.ts
-import { createClient } from '@libsql/client';
-
-const url = process.env.TURSO_DATABASE_URL;
-const authToken = process.env.TURSO_AUTH_TOKEN;
-
-if (!url || !authToken) {
-  throw new Error('Missing Turso environment variables');
-}
-
-export const turso = createClient({
-  url,
-  authToken,
-});
-```
-
-### ステップ5: テーブル作成
-
-初回のみ、以下のSQLを実行してテーブルを作成します（Turso CLIの `turso db shell universalis-ranking` またはアプリ内の初期化スクリプトで実行）。
-
-```sql
-CREATE TABLE IF NOT EXISTS rankings (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  item_id INTEGER NOT NULL,
-  item_name TEXT NOT NULL,
-  retainer_qty INTEGER DEFAULT 0,
-  avg_price INTEGER DEFAULT 0,
-  estimated_value INTEGER DEFAULT 0,
-  total_sales_qty INTEGER DEFAULT 0,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
--- 検索を高速化するためのインデックス
-CREATE INDEX IF NOT EXISTS idx_rankings_estimated_value ON rankings(estimated_value DESC);
-```
-
----
-
-## データ同期APIの実装 (保存側)
-
-`src/app/api/sync-ranking/route.ts` を以下のように実装し、GitHub Actionsから受け取ったデータをTursoに保存します。
+受け取ったデータをTursoに保存します。`INSERT OR REPLACE` (Upsert) を使用して、既存データがあれば更新します。
 
 ```typescript
 // src/app/api/sync-ranking/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { turso } from '@/lib/turso';
-import type { RankingItem } from '@/types';
 
 export const dynamic = 'force-dynamic';
-
 const CRON_SECRET = process.env.CRON_SECRET;
 
 export async function POST(request: NextRequest) {
     try {
-        // 1. 認証
         const authHeader = request.headers.get('authorization');
-        const token = authHeader?.replace('Bearer ', '');
-        
-        if (token !== CRON_SECRET) {
+        if (authHeader?.replace('Bearer ', '') !== CRON_SECRET) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        // 2. データ受信
         const body = await request.json();
-        const data: RankingItem[] = body.data;
+        const data = body.data; // DailyRankingData[]
 
         if (!Array.isArray(data)) {
-            return NextResponse.json({ error: 'Invalid data format' }, { status: 400 });
+            return NextResponse.json({ error: 'Invalid data' }, { status: 400 });
         }
 
-        console.log(`Received ${data.length} items. Saving to Turso...`);
+        const statements = data.map(item => ({
+            sql: `INSERT INTO daily_rankings (
+                    item_id, date, item_name, retainer_qty, sales_qty, total_sales_gil, avg_price, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(item_id, date) DO UPDATE SET
+                    retainer_qty = excluded.retainer_qty,
+                    sales_qty = excluded.sales_qty,
+                    total_sales_gil = excluded.total_sales_gil,
+                    avg_price = excluded.avg_price,
+                    updated_at = CURRENT_TIMESTAMP`,
+            args: [
+                item.item_id, item.date, item.item_name, item.retainer_qty,
+                item.sales_qty, item.total_sales_gil, item.avg_price
+            ]
+        }));
 
-        // 3. トランザクションで一括保存
-        // 既存データを削除して入れ替える方式（シンプル）
-        const statements = [
-            { sql: 'DELETE FROM rankings', args: [] }, // 全削除
-        ];
-
-        // 挿入クエリの作成
-        for (const item of data) {
-            statements.push({
-                sql: `INSERT INTO rankings (
-                    item_id, item_name, retainer_qty, avg_price, estimated_value, total_sales_qty, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
-                args: [
-                    item.item_id,
-                    item.item_name,
-                    item.retainer_qty,
-                    item.avg_price,
-                    item.estimated_value,
-                    item.total_sales_qty
-                ]
-            });
-        }
-
-        // Tursoは一度に実行できるステートメント数に制限がある場合があるため、
-        // 大量データの場合は分割バッチ処理を推奨しますが、ここではシンプルに実装します。
-        // ※数千件ある場合は、50-100件ずつに分割してexecuteBatchするか、
-        // INSERT INTO ... VALUES (...), (...), (...) の形式にまとめるのがベターです。
-        
-        // 簡易実装: トランザクション実行
         await turso.batch(statements, 'write');
 
-        return NextResponse.json({ 
-            success: true, 
-            message: 'Data synced successfully',
-            count: data.length 
-        });
-
+        return NextResponse.json({ success: true, count: data.length });
     } catch (error) {
         console.error('Sync Error:', error);
-        return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Unknown error' },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }
 ```
 
----
+### 3. データ取得・表示API (`src/app/api/ranking/cached/route.ts`)
 
-## データ取得APIの実装 (表示側)
-
-フロントエンドから呼び出すための、DBからデータを取得するAPIを作成します。
-`src/app/api/ranking/cached/route.ts` (新規作成)
+フロントエンドからのリクエストに応じて、指定期間のデータを集計して返します。
 
 ```typescript
 // src/app/api/ranking/cached/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { turso } from '@/lib/turso';
+import { subDays, format } from 'date-fns';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
+        const days = parseInt(searchParams.get('days') || '5'); // 集計期間
         const limit = parseInt(searchParams.get('limit') || '50');
-        const sortBy = searchParams.get('sortBy') || 'value'; // value, price, sales
+        const sortBy = searchParams.get('sortBy') || 'value';
 
-        let orderByClause = 'estimated_value DESC';
-        if (sortBy === 'price') orderByClause = 'avg_price DESC';
-        if (sortBy === 'sales') orderByClause = 'total_sales_qty DESC';
+        // 集計開始日を計算
+        const startDate = format(subDays(new Date(), days), 'yyyy-MM-dd');
 
-        // Tursoからデータ取得
+        // ソート条件
+        let orderBy = 'estimated_value DESC';
+        if (sortBy === 'price') orderBy = 'avg_price DESC';
+        if (sortBy === 'sales') orderBy = 'total_sales_qty DESC';
+
+        // SQL: 期間内のデータをアイテムごとにGROUP BYして集計
+        const sql = `
+            SELECT 
+                item_id,
+                item_name,
+                MAX(retainer_qty) as retainer_qty,
+                SUM(sales_qty) as total_sales_qty,
+                SUM(total_sales_gil) as total_sales_gil,
+                CAST(SUM(total_sales_gil) * 1.0 / NULLIF(SUM(sales_qty), 0) AS INTEGER) as avg_price,
+                (CAST(SUM(total_sales_gil) * 1.0 / NULLIF(SUM(sales_qty), 0) AS INTEGER) * MAX(retainer_qty)) as estimated_value
+            FROM daily_rankings
+            WHERE date >= ?
+            GROUP BY item_id, item_name
+            HAVING total_sales_qty > 0
+            ORDER BY ${orderBy}
+            LIMIT ?
+        `;
+
         const result = await turso.execute({
-            sql: `SELECT * FROM rankings ORDER BY ${orderByClause} LIMIT ?`,
-            args: [limit]
+            sql,
+            args: [startDate, limit]
         });
 
-        // 配列形式に変換
         const items = result.rows.map(row => ({
             item_id: row.item_id,
             item_name: row.item_name,
             retainer_qty: row.retainer_qty,
-            avg_price: row.avg_price,
-            estimated_value: row.estimated_value,
+            avg_price: row.avg_price || 0,
+            estimated_value: row.estimated_value || 0,
             total_sales_qty: row.total_sales_qty
         }));
 
-        return NextResponse.json({
-            success: true,
-            data: items,
-            source: 'database' // DBからの取得であることを明示
-        });
+        return NextResponse.json({ success: true, data: items, days });
 
     } catch (error) {
-        console.error('Database Error:', error);
-        return NextResponse.json(
-            { success: false, error: 'Failed to fetch rankings' },
-            { status: 500 }
-        );
+        console.error('DB Error:', error);
+        return NextResponse.json({ error: 'Failed' }, { status: 500 });
     }
 }
 ```
 
-### フロントエンドでの利用
+### 4. ワークフロー定義 (`.github/workflows/update-ranking.yml`)
 
-`src/components/RankingTable.tsx` や `page.tsx` で、fetch先を `/api/ranking` から `/api/ranking/cached` に切り替えるだけで、高速に表示できるようになります。
+```yaml
+name: Update Ranking Data
 
-```typescript
-// 例: フロントエンドでの取得
-const response = await fetch('/api/ranking/cached?limit=100&sortBy=value');
-const json = await response.json();
-setRankings(json.data);
+on:
+  schedule:
+    # 毎日 18:00 UTC (日本時間 3:00) に実行
+    - cron: '0 18 * * *'
+  workflow_dispatch:
+
+jobs:
+  update-ranking:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run script
+        run: npx tsx scripts/update-ranking.ts
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          VERCEL_APP_URL: ${{ secrets.VERCEL_APP_URL }}
 ```
+
+---
+
+## 実行頻度の変更方法
+
+データの更新頻度を変更したい場合は、`.github/workflows/update-ranking.yml` の `cron` 設定を変更します。
+
+### Cron式の書き方
+形式: `分 時 日 月 曜日` (UTC時間)
+
+| 記述 | 意味 (UTC) | 日本時間 (JST) |
+| :--- | :--- | :--- |
+| `'0 18 * * *'` | 毎日 18:00 | 翌日 03:00 (深夜) |
+| `'0 9 * * *'` | 毎日 09:00 | 同日 18:00 (夕方) |
+| `'0 */6 * * *'` | 6時間おき | 6時間おき |
+| `'0 21 * * 5'` | 金曜 21:00 | 土曜 06:00 |
+
+### 変更手順
+1. `.github/workflows/update-ranking.yml` を開く。
+2. `on: schedule: - cron: '...'` の部分を書き換える。
+3. GitHubへPushする。
+
+**注意**: GitHub Actionsのスケジュール実行は、指定時刻から**数分〜数十分遅れる**ことがあります。厳密な時刻実行は保証されません。
+
