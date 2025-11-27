@@ -312,14 +312,235 @@ npm install -D tsx
 
 ---
 
-## データベース保存について (推奨)
+## データベース設定 (Turso)
 
-この構成では `sync-ranking` APIでデータを受け取った後、永続化する必要があります。
-Vercel Postgresを使用する場合の例：
+Vercelのタイムアウト制限を回避するため、計算結果を外部データベース（Turso）に保存し、フロントエンドからはその保存済みデータを参照する構成にします。
 
-1. VercelダッシュボードでStorage (Postgres) を作成
-2. プロジェクトに接続 (`.env` が自動設定される)
-3. `npm install @vercel/postgres`
-4. `sync-ranking/route.ts` で `sql` クエリを使って `INSERT` する
+### ステップ1: Tursoのセットアップ
 
-これにより、Webサイト側 (`page.tsx`) は毎回Universalis APIを叩くのではなく、自分のDBから高速にデータを取得できるようになります。
+1. **Tursoアカウント作成**: [Turso公式サイト](https://turso.tech/)からサインアップします。
+2. **CLIのインストール**:
+   ```bash
+   # Windows (PowerShell)
+   iwr https://web.install.turso.tech/turso.ps1 -useb | iex
+   
+   # Mac/Linux
+   curl -sSfL https://get.tur.so/install.sh | bash
+   ```
+3. **ログインとデータベース作成**:
+   ```bash
+   turso auth login
+   turso db create universalis-ranking
+   ```
+4. **接続情報の取得**:
+   ```bash
+   # データベースURL (例: libsql://universalis-ranking-user.turso.io)
+   turso db show universalis-ranking --url
+   
+   # 認証トークン
+   turso db tokens create universalis-ranking
+   ```
+
+### ステップ2: 環境変数の設定
+
+Vercelのプロジェクト設定（Settings > Environment Variables）に以下を追加します。
+
+- `TURSO_DATABASE_URL`: 上記で取得したURL
+- `TURSO_AUTH_TOKEN`: 上記で取得したトークン
+
+### ステップ3: 必要なパッケージのインストール
+
+```bash
+npm install @libsql/client
+```
+
+### ステップ4: DB接続クライアントの作成
+
+`src/lib/turso.ts` を作成します。
+
+```typescript
+// src/lib/turso.ts
+import { createClient } from '@libsql/client';
+
+const url = process.env.TURSO_DATABASE_URL;
+const authToken = process.env.TURSO_AUTH_TOKEN;
+
+if (!url || !authToken) {
+  throw new Error('Missing Turso environment variables');
+}
+
+export const turso = createClient({
+  url,
+  authToken,
+});
+```
+
+### ステップ5: テーブル作成
+
+初回のみ、以下のSQLを実行してテーブルを作成します（Turso CLIの `turso db shell universalis-ranking` またはアプリ内の初期化スクリプトで実行）。
+
+```sql
+CREATE TABLE IF NOT EXISTS rankings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  item_id INTEGER NOT NULL,
+  item_name TEXT NOT NULL,
+  retainer_qty INTEGER DEFAULT 0,
+  avg_price INTEGER DEFAULT 0,
+  estimated_value INTEGER DEFAULT 0,
+  total_sales_qty INTEGER DEFAULT 0,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 検索を高速化するためのインデックス
+CREATE INDEX IF NOT EXISTS idx_rankings_estimated_value ON rankings(estimated_value DESC);
+```
+
+---
+
+## データ同期APIの実装 (保存側)
+
+`src/app/api/sync-ranking/route.ts` を以下のように実装し、GitHub Actionsから受け取ったデータをTursoに保存します。
+
+```typescript
+// src/app/api/sync-ranking/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { turso } from '@/lib/turso';
+import type { RankingItem } from '@/types';
+
+export const dynamic = 'force-dynamic';
+
+const CRON_SECRET = process.env.CRON_SECRET;
+
+export async function POST(request: NextRequest) {
+    try {
+        // 1. 認証
+        const authHeader = request.headers.get('authorization');
+        const token = authHeader?.replace('Bearer ', '');
+        
+        if (token !== CRON_SECRET) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        // 2. データ受信
+        const body = await request.json();
+        const data: RankingItem[] = body.data;
+
+        if (!Array.isArray(data)) {
+            return NextResponse.json({ error: 'Invalid data format' }, { status: 400 });
+        }
+
+        console.log(`Received ${data.length} items. Saving to Turso...`);
+
+        // 3. トランザクションで一括保存
+        // 既存データを削除して入れ替える方式（シンプル）
+        const statements = [
+            { sql: 'DELETE FROM rankings', args: [] }, // 全削除
+        ];
+
+        // 挿入クエリの作成
+        for (const item of data) {
+            statements.push({
+                sql: `INSERT INTO rankings (
+                    item_id, item_name, retainer_qty, avg_price, estimated_value, total_sales_qty, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+                args: [
+                    item.item_id,
+                    item.item_name,
+                    item.retainer_qty,
+                    item.avg_price,
+                    item.estimated_value,
+                    item.total_sales_qty
+                ]
+            });
+        }
+
+        // Tursoは一度に実行できるステートメント数に制限がある場合があるため、
+        // 大量データの場合は分割バッチ処理を推奨しますが、ここではシンプルに実装します。
+        // ※数千件ある場合は、50-100件ずつに分割してexecuteBatchするか、
+        // INSERT INTO ... VALUES (...), (...), (...) の形式にまとめるのがベターです。
+        
+        // 簡易実装: トランザクション実行
+        await turso.batch(statements, 'write');
+
+        return NextResponse.json({ 
+            success: true, 
+            message: 'Data synced successfully',
+            count: data.length 
+        });
+
+    } catch (error) {
+        console.error('Sync Error:', error);
+        return NextResponse.json(
+            { error: error instanceof Error ? error.message : 'Unknown error' },
+            { status: 500 }
+        );
+    }
+}
+```
+
+---
+
+## データ取得APIの実装 (表示側)
+
+フロントエンドから呼び出すための、DBからデータを取得するAPIを作成します。
+`src/app/api/ranking/cached/route.ts` (新規作成)
+
+```typescript
+// src/app/api/ranking/cached/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { turso } from '@/lib/turso';
+
+export const dynamic = 'force-dynamic';
+
+export async function GET(request: NextRequest) {
+    try {
+        const { searchParams } = new URL(request.url);
+        const limit = parseInt(searchParams.get('limit') || '50');
+        const sortBy = searchParams.get('sortBy') || 'value'; // value, price, sales
+
+        let orderByClause = 'estimated_value DESC';
+        if (sortBy === 'price') orderByClause = 'avg_price DESC';
+        if (sortBy === 'sales') orderByClause = 'total_sales_qty DESC';
+
+        // Tursoからデータ取得
+        const result = await turso.execute({
+            sql: `SELECT * FROM rankings ORDER BY ${orderByClause} LIMIT ?`,
+            args: [limit]
+        });
+
+        // 配列形式に変換
+        const items = result.rows.map(row => ({
+            item_id: row.item_id,
+            item_name: row.item_name,
+            retainer_qty: row.retainer_qty,
+            avg_price: row.avg_price,
+            estimated_value: row.estimated_value,
+            total_sales_qty: row.total_sales_qty
+        }));
+
+        return NextResponse.json({
+            success: true,
+            data: items,
+            source: 'database' // DBからの取得であることを明示
+        });
+
+    } catch (error) {
+        console.error('Database Error:', error);
+        return NextResponse.json(
+            { success: false, error: 'Failed to fetch rankings' },
+            { status: 500 }
+        );
+    }
+}
+```
+
+### フロントエンドでの利用
+
+`src/components/RankingTable.tsx` や `page.tsx` で、fetch先を `/api/ranking` から `/api/ranking/cached` に切り替えるだけで、高速に表示できるようになります。
+
+```typescript
+// 例: フロントエンドでの取得
+const response = await fetch('/api/ranking/cached?limit=100&sortBy=value');
+const json = await response.json();
+setRankings(json.data);
+```
