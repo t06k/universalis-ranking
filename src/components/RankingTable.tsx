@@ -42,10 +42,10 @@ export default function RankingTable({ data, metadata }: RankingTableProps) {
                     <div className="flex items-center gap-6 mb-6">
                         <div className="flex items-center gap-2">
                             <span className="bg-red-500 text-white text-xs px-2 py-1 rounded font-bold">
-                                取引額
+                                総取引額
                             </span>
                             <span className="text-2xl font-bold text-gray-800">
-                                {formatNumber(item.estimated_value)}
+                                {formatNumber(item.total_sales)}
                             </span>
                             <span className="text-sm text-gray-600"> ギル</span>
                         </div>
@@ -62,7 +62,7 @@ export default function RankingTable({ data, metadata }: RankingTableProps) {
                         </div>
 
                         <div className="bg-gray-50 rounded p-4 text-center">
-                            <div className="text-xs text-gray-600 mb-2">平均出品数</div>
+                            <div className="text-xs text-gray-600 mb-2">平均出品個数</div>
                             <div className="text-lg font-bold text-gray-800">{item.avg_qty}</div>
                         </div>
 
