@@ -37,3 +37,10 @@ export interface ItemNameMap {
         en?: string;
     };
 }
+
+export interface ItemCategoryHQ{
+    [itemId: number]:{
+    ItemSearchCategory:number;
+    CanBeHq:boolean;
+    }
+}
