@@ -97,6 +97,7 @@ export async function GET(request: NextRequest) {
                 item_name: itemName,
                 retainer_qty: retainerQty, // 実際の数量を渡す
                 avg_price: Math.round(avgPrice),
+                total_sales: totalSales,
                 estimated_value: estimatedValue, // 計算に使用した推定価値
                 total_sales_qty: totalQty, // ソート用に販売数を保持
                 total_trades: totalTrades,
@@ -111,7 +112,7 @@ export async function GET(request: NextRequest) {
             } else if (sortBy === 'sales') {
                 return b.total_sales_qty - a.total_sales_qty; // 販売数順
             } else {
-                return b.estimated_value - a.estimated_value; // デフォルト: 取引額順
+                return b.total_sales - a.total_sales; // デフォルト: 取引額順
             }
         }).slice(0, topN);
 

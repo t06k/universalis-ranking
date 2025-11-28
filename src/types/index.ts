@@ -5,6 +5,7 @@ export interface RankingItem {
     item_name: string;
     retainer_qty: number;
     avg_price: number;
+    total_sales: number;
     estimated_value: number;
     total_sales_qty: number;
     total_trades: number;

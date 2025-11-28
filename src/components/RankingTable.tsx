@@ -31,9 +31,9 @@ export default function RankingTable({ data, metadata }: RankingTableProps) {
                             <h3 className="text-xl font-bold text-gray-800">{item.item_name}</h3>
                         </div>
                         <div className="text-right text-xs text-gray-500">
-                            <div>{new Date().toLocaleString('ja-JP')} 更新</div>
+                            {/* <div>{new Date().toLocaleString('ja-JP')} 更新</div> */}
                             <div className="mt-1">
-                                <span className="inline-block">🌐 Universalis</span>
+                                {/* <span className="inline-block">🌐 Universalis</span> */}
                             </div>
                         </div>
                     </div>
@@ -42,7 +42,7 @@ export default function RankingTable({ data, metadata }: RankingTableProps) {
                     <div className="flex items-center gap-6 mb-6">
                         <div className="flex items-center gap-2">
                             <span className="bg-red-500 text-white text-xs px-2 py-1 rounded font-bold">
-                                推定価値
+                                取引額
                             </span>
                             <span className="text-2xl font-bold text-gray-800">
                                 {formatNumber(item.estimated_value)}
@@ -62,17 +62,16 @@ export default function RankingTable({ data, metadata }: RankingTableProps) {
                         </div>
 
                         <div className="bg-gray-50 rounded p-4 text-center">
-                            <div className="text-xs text-gray-600 mb-2">平均個数</div>
+                            <div className="text-xs text-gray-600 mb-2">平均出品数</div>
                             <div className="text-lg font-bold text-gray-800">{item.avg_qty}</div>
                         </div>
 
                         <div className="bg-gray-50 rounded p-4 text-center">
                             <div className="text-xs text-gray-600 mb-2">販売数</div>
-                            <div className="text-lg font-bold text-gray-800">
+                            <span className="text-lg font-bold text-gray-800">
                                 {formatNumber(item.total_sales_qty)}
-
-                                <span className="text-xs text-gray-600 mt-1">個</span>
-                            </div>
+                            </span>
+                            <span className="text-xs text-gray- mt-1"> 個</span>
                         </div>
                     </div>
                 </div>
