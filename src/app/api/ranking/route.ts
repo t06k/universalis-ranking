@@ -11,13 +11,14 @@ import type { RankingItem } from '@/types';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 export const maxItems = 300000;
+export const days = 7;
+export const topN = 50;
 
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
-        const days = parseInt(searchParams.get('days') || '5');
         const minSalesPerDay = parseInt(searchParams.get('minSales') || '100');
-        const topN = parseInt(searchParams.get('top') || '30');
+        // const topN = parseInt(searchParams.get('top') || '30');
         const worldId = parseInt(searchParams.get('worldId') || '48');
         const sortBy = searchParams.get('sortBy') || 'value';
 

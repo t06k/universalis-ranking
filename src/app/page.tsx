@@ -84,14 +84,8 @@ function SearchContent() {
   const [retainerCheck, setRetainerCheck] = useState(() =>
     searchParams.has('retainer_check') ? searchParams.get('retainer_check') !== 'false' : true
   );
-  const [days, setDays] = useState(() =>
-    Number(searchParams.get('days')) || 5
-  );
   const [minSales, setMinSales] = useState(() =>
     Number(searchParams.get('minSales')) || 100
-  );
-  const [topN, setTopN] = useState(() =>
-    Number(searchParams.get('top')) || 30
   );
   const [worldId, setWorldId] = useState(() =>
     Number(searchParams.get('worldId')) || 48
@@ -124,9 +118,7 @@ function SearchContent() {
   // 検索実行（URLを更新）
   const handleSearch = () => {
     const params = new URLSearchParams();
-    params.set('days', days.toString());
     params.set('minSales', minSales.toString());
-    params.set('top', topN.toString());
     params.set('retainer_check', retainerCheck.toString());
     params.set('worldId', worldId.toString());
     params.set('sortBy', sortBy);
@@ -147,9 +139,7 @@ function SearchContent() {
       // ここではfetchだけ行い、URLはクリーンなままにする（あるいはデフォルトを反映させる）
       // ユーザー体験としてはデフォルト値がURLに入っていたほうが共有しやすいのでreplaceする
       const defaultParams = new URLSearchParams();
-      defaultParams.set('days', days.toString());
       defaultParams.set('minSales', minSales.toString());
-      defaultParams.set('top', topN.toString());
       defaultParams.set('retainer_check', retainerCheck.toString());
       defaultParams.set('worldId', worldId.toString());
       defaultParams.set('sortBy', sortBy);
@@ -160,9 +150,7 @@ function SearchContent() {
     }
 
     // URLパラメータからStateを同期（ブラウザバック対応）
-    if (searchParams.has('days')) setDays(Number(searchParams.get('days')));
     if (searchParams.has('minSales')) setMinSales(Number(searchParams.get('minSales')));
-    if (searchParams.has('top')) setTopN(Number(searchParams.get('top')));
     if (searchParams.has('retainer_check')) setRetainerCheck(searchParams.get('retainer_check') !== 'false');
     if (searchParams.has('worldId')) setWorldId(Number(searchParams.get('worldId')));
     if (searchParams.has('sortBy')) setSortBy(searchParams.get('sortBy') || 'value');
@@ -209,40 +197,14 @@ function SearchContent() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              集計期間（日）
-            </label>
-            <input
-              type="number"
-              value={days}
-              onChange={(e) => setDays(parseInt(e.target.value))}
-              min="1"
-              max="30"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
               最低販売数/日
             </label>
             <input
               type="number"
               value={minSales}
-              onChange={(e) => setMinSales(parseInt(e.target.value))}
               min="1"
               max="100"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              表示件数
-            </label>
-            <input
-              type="number"
-              value={topN}
-              onChange={(e) => setTopN(parseInt(e.target.value))}
-              min="5"
-              max="100"
+              onChange={(e) => setMinSales(parseInt(e.target.value))}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
             />
           </div>
