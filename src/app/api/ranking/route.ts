@@ -66,6 +66,12 @@ export async function GET(request: NextRequest) {
                 0
             );
 
+            //総取引数
+            const totalTrades = recentEntries.length;
+
+            // 平均個数
+            const avgQty = totalQty / totalTrades;
+
             // 平均価格(単価)
             const avgPrice = totalQty > 0 ? totalSales / totalQty : 0;
 
@@ -92,7 +98,9 @@ export async function GET(request: NextRequest) {
                 retainer_qty: retainerQty, // 実際の数量を渡す
                 avg_price: Math.round(avgPrice),
                 estimated_value: estimatedValue, // 計算に使用した推定価値
-                total_sales_qty: totalQty // ソート用に販売数を保持
+                total_sales_qty: totalQty, // ソート用に販売数を保持
+                total_trades: totalTrades,
+                avg_qty: Math.round(avgQty)
             });
         }
 

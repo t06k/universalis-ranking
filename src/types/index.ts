@@ -7,6 +7,8 @@ export interface RankingItem {
     avg_price: number;
     estimated_value: number;
     total_sales_qty: number;
+    total_trades: number;
+    avg_qty: number;
 }
 
 export interface HistoryEntry {
