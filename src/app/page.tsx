@@ -5,7 +5,7 @@ import RankingTable from '@/components/RankingTable';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import ErrorMessage from '@/components/ErrorMessage';
 import type { RankingItem } from '@/types';
-import header from '@/app/header';
+import Header from '@/app/header';
 
 interface ApiResponse {
   success: boolean;
@@ -18,7 +18,6 @@ interface ApiResponse {
   };
   error?: string;
 }
-
 // ワールドデータ定義
 const WORLDS_BY_DC = {
   'Elemental': [
@@ -161,7 +160,9 @@ function SearchContent() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      {loading && <header />}
+
+      <Header />
+
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <h2 className="text-lg font-semibold text-gray-800 mb-4">
           検索条件

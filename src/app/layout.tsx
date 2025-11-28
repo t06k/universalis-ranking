@@ -19,7 +19,7 @@ export default function RootLayout({
 }) {
     return (
         <html lang="ja">
-            <body className={inter.className}><Header />{children}<SpeedInsights /><Analytics /></body>
+            <body className={inter.className}>{children}<SpeedInsights /><Analytics /></body>
         </html>
     );
 }
