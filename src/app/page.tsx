@@ -82,7 +82,7 @@ function SearchContent() {
 
   // URLパラメータから初期値を設定
   // const [retainerCheck, setRetainerCheck] = useState(() =>
-  //   searchParams.has('retainer_check') ? searchParams.get('retainer_check') !== 'false' : true
+  //   searchParams.has('retainer_check') ? searchParams.get('retainer_check') !== 'false' : false
   // );
   const [minSales, setMinSales] = useState(() =>
     Number(searchParams.get('minSales')) || 100
