@@ -202,9 +202,13 @@ function SearchContent() {
             <input
               type="number"
               value={minSales}
-              min="1"
-              max="100"
-              onChange={(e) => setMinSales(parseInt(e.target.value))}
+              onChange={(e) => {
+                const value = parseInt(e.target.value, 10);
+                if (value >= 1 && value <= 3000) {
+                  setMinSales(value);
+                }
+              }
+              }
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
             />
           </div>
