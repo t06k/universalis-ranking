@@ -4,6 +4,8 @@ import { Analytics } from "@vercel/analytics/next"
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
+import Header from '@/app/header';
+
 const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
     title: 'マケボランキング | FF14 マーケット分析',
@@ -17,7 +19,7 @@ export default function RootLayout({
 }) {
     return (
         <html lang="ja">
-            <body className={inter.className}>{children}<SpeedInsights /><Analytics /></body>
+            <body className={inter.className}><Header />{children}<SpeedInsights /><Analytics /></body>
         </html>
     );
 }
