@@ -2,7 +2,7 @@
 import Papa from 'papaparse';
 import { promises as fs } from 'fs';
 import path from 'path';
-import type { RetainerItem as RetainerItemMap, ItemNameMap } from '@/types';
+import type { RetainerItem as RetainerItemMap, ItemNameMap, ItemCategoryHQ} from '@/types';
 
 /**
  * CSV から リテイナー取得アイテムを読み込む
@@ -77,3 +77,12 @@ export async function loadItemNames(): Promise<ItemNameMap> {
 /**
  * CSVからアイテムカテゴリ/HQを読み込む
  */
+export async function loadItemCategoryHQ(): Promise<ItemCategoryHQ>{
+    try {
+        const filePath = path.join(process.cwd(), 'public', 'data', 'filtered_item_category_data.csv');
+        const csvText = await fs.readFile(filePath, 'utf-8');
+
+
+    return{};
+    }
+}
