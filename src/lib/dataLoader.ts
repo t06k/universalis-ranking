@@ -1,4 +1,3 @@
-// src/lib/dataLoader.ts
 import Papa from 'papaparse';
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -82,7 +81,53 @@ export async function loadItemCategoryHQ(): Promise<ItemCategoryHQ>{
         const filePath = path.join(process.cwd(), 'public', 'data', 'filtered_item_category_data.csv');
         const csvText = await fs.readFile(filePath, 'utf-8');
 
+        // CSVを行ごとに分割
+        const lines = csvText.split('\n');
 
-    return{};
+        // 最初の3行をスキップ（key行、#ヘッダー行、型定義行）
+        const dataLines = lines.slice(3).filter(line => line.trim().length > 0);
+
+        // ヘッダー行（2行目）からカラム名を取得
+        const headerLine = lines[1];
+        const headers = headerLine.split(',');
+
+        console.log('CSV headers:', headers);
+        console.log('Data lines:', dataLines.length);
+
+        const itemCategoryHQ: ItemCategoryHQ = {};
+
+        dataLines.forEach((line, index) => {
+            const values = line.split(',');
+
+            // ItemID（インデックス0）とCategory（インデックス1）を取得
+            const itemId = parseInt(values[0]);
+            const category = parseInt(values[1]);
+            const hqCheck = values[2]?.trim();
+
+            if (!isNaN(itemId) && !isNaN(category) && hqCheck != null) {
+                itemCategoryHQ[itemId] = {
+                    ItemSearchCategory: category,
+                    CanBeHq: hqCheck === 'True'
+                };
+            }
+
+            // 最初の5行をログ出力（デバッグ用）
+            if (index < 5) {
+                console.log(`Row ${index}:`, {
+                    itemId,
+                    category,
+                    hqCheck,
+                    raw: values
+                });
+            }
+        });
+
+        console.log('Loaded item category/HQ:', Object.keys(itemCategoryHQ).length);
+        console.log('Sample items:', Object.entries(itemCategoryHQ).slice(0, 5));
+
+        return itemCategoryHQ;
+    } catch (error) {
+        console.error('Failed to load item category/HQ:', error);
+        throw error;
     }
 }
