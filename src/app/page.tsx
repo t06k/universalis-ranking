@@ -173,7 +173,7 @@ function SearchContent() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              最低販売数/日
+              1日の最低販売数
             </label>
             <input
               type="number"
