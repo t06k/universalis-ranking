@@ -11,6 +11,7 @@ import type { RankingItem } from '@/types';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 export const maxItems = 300000;
+
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
@@ -20,10 +21,9 @@ export async function GET(request: NextRequest) {
         const worldId = parseInt(searchParams.get('worldId') || '48');
         const sortBy = searchParams.get('sortBy') || 'value';
 
-
-
-        // ▼ 1. チェックボックスの状態を取得 ▼
-        const retainerCheck = searchParams.get('retainer_check') === 'true'
+        // ▼ 1. チェックボックスの状態を取得 (デフォルトtrue) ▼
+        // URLパラメータがない場合はtrue、ある場合は文字列比較
+        const retainerCheck = searchParams.get('retainer_check') !== 'false';
 
         console.log('Starting ranking calculation...', { days, minSalesPerDay, retainerCheck, worldId, sortBy });
 
@@ -44,7 +44,6 @@ export async function GET(request: NextRequest) {
 
         // 4. ランキング計算
         const results: RankingItem[] = [];
-        // const results: any[] = []; 
         const minTotalSales = minSalesPerDay * days;
 
         for (const [itemIdStr, data] of Object.entries(histories)) {
