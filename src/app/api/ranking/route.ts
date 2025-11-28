@@ -5,7 +5,7 @@ import {
     fetchAllHistories,
     filterRecentEntries
 } from '@/lib/universalis';
-import { loadRetainerItems, loadItemNames } from '@/lib/dataLoader';
+import { loadRetainerItems, loadItemNames, loadItemCategoryHQ} from '@/lib/dataLoader';
 import type { RankingItem } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -23,14 +23,15 @@ export async function GET(request: NextRequest) {
 
         // ▼ 1. チェックボックスの状態を取得 (デフォルトtrue) ▼
         // URLパラメータがない場合はtrue、ある場合は文字列比較
-        const retainerCheck = searchParams.get('retainer_check') !== 'false';
+        // const retainerCheck = searchParams.get('retainer_check') !== 'false';
 
-        console.log('Starting ranking calculation...', { days, minSalesPerDay, retainerCheck, worldId, sortBy });
+        console.log('Starting ranking calculation...', { days, minSalesPerDay, worldId, sortBy });
 
         // 1. データ読み込み (loadRetainerItems は常に実行)
         const [retainerMap, itemNames, marketableIds] = await Promise.all([
             loadRetainerItems(),
             loadItemNames(),
+            // loadItemCategoryHQ(),
             fetchMarketableIds()
         ]);
         console.log(`Loaded: ${Object.keys(retainerMap).length} retainer items, ${marketableIds.length} marketable items`);
@@ -79,9 +80,9 @@ export async function GET(request: NextRequest) {
             const retainerQty = retainerMap[itemId] || 0;
 
             // ▼ 2. retainerCheckがONの場合のみ、リテイナー品以外を除外 ▼
-            if (retainerCheck && retainerQty === 0) {
-                continue;
-            }
+            // if (retainerCheck && retainerQty === 0) {
+            //     continue;
+            // }
 
             // アイテム名取得
             const itemName = itemNames[itemIdStr]?.ja || `ID:${itemId}`;
@@ -124,7 +125,7 @@ export async function GET(request: NextRequest) {
                 total_evaluated: targetIds.length,
                 total_matched: results.length,
                 returned: rankedResults.length,
-                parameters: { days, minSalesPerDay, maxItems, topN, retainerCheck, sortBy }
+                parameters: { days, minSalesPerDay, maxItems, topN, sortBy }
             }
         });
     } catch (error) {

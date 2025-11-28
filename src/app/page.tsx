@@ -64,7 +64,7 @@ const WORLDS_BY_DC = {
 
 // ワールドデータ定義
 const SORT_OPTIONS = [
-  { id: "value", name: '取引額' },
+  { id: "value", name: '総取引額' },
   { id: "price", name: '平均単価' },
   { id: "sales", name: '販売数' }
 ];
@@ -81,9 +81,9 @@ function SearchContent() {
   const [currentTime, setCurrentTime] = useState<string>('');
 
   // URLパラメータから初期値を設定
-  const [retainerCheck, setRetainerCheck] = useState(() =>
-    searchParams.has('retainer_check') ? searchParams.get('retainer_check') !== 'false' : true
-  );
+  // const [retainerCheck, setRetainerCheck] = useState(() =>
+  //   searchParams.has('retainer_check') ? searchParams.get('retainer_check') !== 'false' : true
+  // );
   const [minSales, setMinSales] = useState(() =>
     Number(searchParams.get('minSales')) || 100
   );
@@ -119,7 +119,7 @@ function SearchContent() {
   const handleSearch = () => {
     const params = new URLSearchParams();
     params.set('minSales', minSales.toString());
-    params.set('retainer_check', retainerCheck.toString());
+    // params.set('retainer_check', retainerCheck.toString());
     params.set('worldId', worldId.toString());
     params.set('sortBy', sortBy);
 
@@ -205,7 +205,7 @@ function SearchContent() {
             </select>
           </div>
         </div>
-        {/* リテイナー取得アイテムに絞るチェックボックス */}
+        {/* リテイナー取得アイテムに絞るチェックボックス
         <div className="mt-4">
           <label className="flex items-center gap-2 text-sm text-gray-700">
             <input
@@ -216,7 +216,7 @@ function SearchContent() {
             />
             リテイナー取得アイテムのみを対象にする
           </label>
-        </div>
+        </div> */}
 
         <button
           onClick={handleSearch}
