@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
             // アイテム名取得
             const itemName = itemNames[itemIdStr]?.ja || `ID:${itemId}`;
 
-            // ▼ 3. 推定価値の計算を調整 ▼
+            // ▼ 3. 計算を調整 ▼
             // retainerCheckがOFFの場合、リテイナー品でなくても (qty=0)、
             // 数量1として推定価値を計算する
             const qtyForCalc = (retainerQty > 0) ? retainerQty : 1;

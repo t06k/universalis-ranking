@@ -73,3 +73,7 @@ export async function loadItemNames(): Promise<ItemNameMap> {
         return {};
     }
 }
+
+/**
+ * CSVからアイテムカテゴリ/HQを読み込む
+ */
