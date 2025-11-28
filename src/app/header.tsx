@@ -4,7 +4,7 @@ export default function Header() {
     return (
         <header className="mb-8">
             <h1 className="text-4xl font-bold text-gray-800 mb-2">
-                <Link href="/" className="hover:text-blue-600 transition-colors">
+                <Link href="/">
                     マケボランキング
                 </Link>
             </h1>

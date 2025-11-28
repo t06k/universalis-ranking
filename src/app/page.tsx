@@ -126,37 +126,19 @@ function SearchContent() {
     router.push(`${pathname}?${params.toString()}`);
   };
 
-  // URLパラメータが変更されたらデータを再取得
   useEffect(() => {
     const params = new URLSearchParams(searchParams.toString());
 
-    // パラメータがない場合（初回アクセスなど）はデフォルト値を使用するために
-    // 現在のstateの値を使ってパラメータを構築する
-    if (!searchParams.has('days') && !searchParams.has('worldId')) {
-      // 初回ロード時などでURLパラメータが空の場合は、デフォルトstateで検索を実行
-      // ただし、handleSearchを呼ぶとURLが変わってしまうので、
-      // ここではfetchだけ行うか、あるいはURLをreplaceしてデフォルトを表示するか。
-      // ここではfetchだけ行い、URLはクリーンなままにする（あるいはデフォルトを反映させる）
-      // ユーザー体験としてはデフォルト値がURLに入っていたほうが共有しやすいのでreplaceする
-      const defaultParams = new URLSearchParams();
-      defaultParams.set('minSales', minSales.toString());
-      defaultParams.set('retainer_check', retainerCheck.toString());
-      defaultParams.set('worldId', worldId.toString());
-      defaultParams.set('sortBy', sortBy);
-
-      // URLを更新しつつfetchもトリガーされるようにする
-      router.replace(`${pathname}?${defaultParams.toString()}`);
+    if (!searchParams.has('minSales') && !searchParams.has('worldId')) {
+      // 初期ロード時は URL を整えるだけで fetchRanking は呼ばない
+      //router.replace(`${pathname}?${defaultParams.toString()}`);
       return;
     }
 
-    // URLパラメータからStateを同期（ブラウザバック対応）
-    if (searchParams.has('minSales')) setMinSales(Number(searchParams.get('minSales')));
-    if (searchParams.has('retainer_check')) setRetainerCheck(searchParams.get('retainer_check') !== 'false');
-    if (searchParams.has('worldId')) setWorldId(Number(searchParams.get('worldId')));
-    if (searchParams.has('sortBy')) setSortBy(searchParams.get('sortBy') || 'value');
-
+    // URLにパラメータがある場合のみ検索を実行
     fetchRanking(params);
   }, [searchParams]);
+
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
