@@ -33,22 +33,30 @@
 
 ## データベース設定 (Turso)
 
-### 1. セットアップ
-Tursoのアカウント作成とCLIセットアップがまだの場合は実施してください。
+### 1. Vercelでの連携設定 (Web操作)
+CLIを使わず、Vercelのダッシュボードから直接Tursoをセットアップします。
 
-```bash
-# ログインとDB作成
-turso auth login
-turso db create universalis-ranking
+1. **Vercelプロジェクトへ移動**
+   - Vercelのダッシュボードで、このアプリのプロジェクトを開きます。
 
-# 接続情報の取得（環境変数設定に使用）
-turso db show universalis-ranking --url
-turso db tokens create universalis-ranking
-```
+2. **Storageタブから追加**
+   - 上部メニューの **「Storage」** タブをクリックします。
+   - **「Connect Store」** (または Create Database) ボタンをクリックします。
+   - リストから **「Turso」** を選択します（表示されない場合は Marketplace から検索して Install してください）。
 
-### 2. テーブル作成
-以下のSQLを実行して、日次集計用のテーブルを作成します。
-`item_id` と `date` の組み合わせを主キー（PRIMARY KEY）にすることで、重複を防ぎます。
+3. **データベースの作成・連携**
+   - Tursoの認証画面が表示されるのでログイン・承認します。
+   - **「Create New Database」** を選択し、データベース名（例: `universalis-ranking`）を入力して作成します。
+   - 連携が完了すると、自動的に以下の環境変数がプロジェクトに追加されます。
+     - `TURSO_DATABASE_URL`
+     - `TURSO_AUTH_TOKEN`
+
+### 2. テーブル作成 (Turso Web Shell)
+TursoのWebサイト上でSQLを実行してテーブルを作成します。
+
+1. [Turso Dashboard](https://turso.tech/app) にアクセスし、作成したデータベースを選択します。
+2. 画面内の **「Edit Tables」** または **「Shell」** (SQL Editor) を開きます。
+3. 以下のSQLを貼り付けて実行（Run）してください。
 
 ```sql
 CREATE TABLE IF NOT EXISTS daily_rankings (

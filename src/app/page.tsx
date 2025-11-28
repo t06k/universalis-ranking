@@ -20,16 +20,15 @@ interface ApiResponse {
 }
 // ワールドデータ定義
 const WORLDS_BY_DC = {
-  'Elemental': [
-    { id: 23, name: 'Tonberry' },
-    { id: 45, name: 'Carbuncle' },
-    { id: 49, name: 'Kujata' },
-    { id: 28, name: 'Aegis' },
-    { id: 29, name: 'Atomos' },
-    { id: 30, name: 'Garuda' },
-    { id: 31, name: 'Gungnir' },
-    { id: 32, name: 'Ramuh' },
-    { id: 33, name: 'Tiamat' }
+  'Mana': [
+    { id: 44, name: 'Anima' },
+    { id: 47, name: 'Hades' },
+    { id: 48, name: 'Ixion' },
+    { id: 70, name: 'Chocobo' },
+    { id: 41, name: 'Asura' },
+    { id: 43, name: 'Pandaemonium' },
+    { id: 46, name: 'Masamune' },
+    { id: 50, name: 'Titan' }
   ],
   'Gaia': [
     { id: 49, name: 'Alexander' },
@@ -41,16 +40,6 @@ const WORLDS_BY_DC = {
     { id: 38, name: 'Ridill' },
     { id: 40, name: 'Ultima' }
   ],
-  'Mana': [
-    { id: 44, name: 'Anima' },
-    { id: 47, name: 'Hades' },
-    { id: 48, name: 'Ixion' },
-    { id: 70, name: 'Chocobo' },
-    { id: 41, name: 'Asura' },
-    { id: 43, name: 'Pandaemonium' },
-    { id: 46, name: 'Masamune' },
-    { id: 50, name: 'Titan' }
-  ],
   'Meteor': [
     { id: 51, name: 'Shinryu' },
     { id: 52, name: 'Unicorn' },
@@ -59,6 +48,17 @@ const WORLDS_BY_DC = {
     { id: 55, name: 'Valefor' },
     { id: 56, name: 'Mandragora' },
     { id: 42, name: 'Belias' }
+  ],
+  'Elemental': [
+    { id: 23, name: 'Tonberry' },
+    { id: 45, name: 'Carbuncle' },
+    { id: 49, name: 'Kujata' },
+    { id: 28, name: 'Aegis' },
+    { id: 29, name: 'Atomos' },
+    { id: 30, name: 'Garuda' },
+    { id: 31, name: 'Gungnir' },
+    { id: 32, name: 'Ramuh' },
+    { id: 33, name: 'Tiamat' }
   ]
 };
 
