@@ -70,8 +70,9 @@ export default function RankingTable({ data, metadata }: RankingTableProps) {
                             <div className="text-xs text-gray-600 mb-2">販売数</div>
                             <div className="text-lg font-bold text-gray-800">
                                 {formatNumber(item.total_sales_qty)}
+
+                                <span className="text-xs text-gray-600 mt-1">個</span>
                             </div>
-                            <span className="text-xs text-gray-600 mt-1">個</span>
                         </div>
                     </div>
                 </div>
