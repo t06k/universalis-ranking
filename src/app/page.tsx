@@ -127,15 +127,15 @@ function SearchContent() {
   };
 
   useEffect(() => {
-    const params = new URLSearchParams(searchParams.toString());
-
     if (!searchParams.has('minSales') && !searchParams.has('worldId')) {
-      // 初期ロード時は URL を整えるだけで fetchRanking は呼ばない
-      //router.replace(`${pathname}?${defaultParams.toString()}`);
+      // URLに検索条件がない → 初期状態に戻す
+      setData([]);
+      setMetadata(null);
+      setError(null);
       return;
     }
 
-    // URLにパラメータがある場合のみ検索を実行
+    const params = new URLSearchParams(searchParams.toString());
     fetchRanking(params);
   }, [searchParams]);
 
