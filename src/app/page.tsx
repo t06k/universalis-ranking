@@ -5,6 +5,7 @@ import RankingTable from '@/components/RankingTable';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import ErrorMessage from '@/components/ErrorMessage';
 import type { RankingItem } from '@/types';
+import header from '@/app/header';
 
 interface ApiResponse {
   success: boolean;
@@ -160,15 +161,7 @@ function SearchContent() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <header className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-800 mb-2">
-          マケボランキング
-        </h1>
-        <p className="text-gray-600">
-          FF14 マーケット分析アプリ
-        </p>
-      </header>
-
+      {loading && <header />}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <h2 className="text-lg font-semibold text-gray-800 mb-4">
           検索条件
@@ -204,7 +197,7 @@ function SearchContent() {
               value={minSales}
               onChange={(e) => {
                 const value = parseInt(e.target.value, 10);
-                if (value >= 1 && value <= 3000) {
+                if (value <= 1) {
                   setMinSales(value);
                 }
               }
